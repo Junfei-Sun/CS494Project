@@ -1,5 +1,4 @@
 import socket
- 
 host = "localhost"
 port = 8080
  
@@ -10,3 +9,4 @@ client_socket.sendto(data.encode(),(host,port))
 data = client_socket.recv(1024)
 client_socket.close()
 print(data.decode())
+print("hahahah")
