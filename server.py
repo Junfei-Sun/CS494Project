@@ -1,10 +1,9 @@
 import socket
 import threading
 
-
+#from requests import request
 host= 'localhost'
 port= 8080
-
 
 class User():
     def __init__(self, address, socket):
