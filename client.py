@@ -20,14 +20,31 @@ class Handle():
         self.socket.send(jData.encode())
 
     def help(self, data):
-        print("login [username], logout [], help [], exit []")
+        print("****************************")
+        print(" Opreation Menu ")
+        print("****************************")      
+        print("register USERNAME")
+        print("login USERNAME")
+        print("logout USERNAME")
+        print("startshat USERNAME")
+        print("createchatroom ROOMNAME")
+        print("joinchatroom ROOMNAME")
+        print("userlist")
+        print("roomlist\n")
+        print("Type to Perform Operation: ")
 
     def __main__(self, data):
         type = data[0]
         switch = {
+            "help": self.help,
+            #"register": self.register
             "login": self.login,
             "logout": self.logout,
-            "help": self.help
+            #"startchat":self.startchat
+            #"createchatroom":self.createchatroom
+            #"joinchatroom":self.joinchatroom
+            #"userlist":self.userlist
+            #"roomlist":self.roomlist
         }
         try:
             return switch[type](data)
@@ -55,14 +72,9 @@ class Client():
             recvData = client_socket.recv(1024)
             print(recvData.decode())
 
-        
-
-
-
 if __name__ == "__main__":
     client=Client()
     client.__main__()
-
 
 
 """
