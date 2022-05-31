@@ -19,10 +19,14 @@ class Handle():
         print("logout")
         print("listUsers")
         print("chatWith USERNAME")
+        print("listRooms")
+        print("createRoom")
+        print("enterRoom ROOMNAME")
         print("****************************")  
         print("Room Command")
         print("****************************")  
         print(">> MSG")
+        print("listRoomUsers")
         return True
 
     def sendType(self, data):
@@ -50,7 +54,13 @@ class Handle():
             return True
 
     def sendMsg(self, data):
-        sData = {"type": data[0], "msg": data[1]}
+        sData = {"type": data[0], "msg": data[1:]}
+        jData = json.dumps(sData)
+        self.socket.send(jData.encode())
+        return True
+
+    def sendRoom(self, data):
+        sData = {"type": data[0], "roomName": data[1]}
         jData = json.dumps(sData)
         self.socket.send(jData.encode())
         return True
@@ -81,15 +91,23 @@ class Handle():
                 return self.sendTo(data)
             elif type == ">>":
                 return self.sendMsg(data)
+            elif type == "createRoom":
+                return self.sendType(data)
+            elif type == "enterRoom":
+                return self.sendRoom(data)
+            elif type == "listRooms":
+                return self.sendType(data)
+            elif type == "listRoomUsers":
+                return self.sendType(data)
             else:
                 print("Incorrect command. If need help, enter help as Command.")
-                return False
+                return True
 
         except Exception as e:
             print("Unkown error. If need help, enter help as Command.")
             print(data)
             print(e)
-            return False
+            return True
 
 class listenThread(threading.Thread):
     def __init__(self, csocket, handle):
@@ -103,6 +121,9 @@ class listenThread(threading.Thread):
                 recvData = self.sock.recv(1024)
                 data = json.loads(recvData.decode())
                 if data['type'] == "recieve":
+                    if "info" in data.keys():
+                        print(data['info'])
+                    print("From: "+ data['from'])
                     print(data['msg'])
                 elif data['type'] == "enterChat":
                     rdata = ["chatWith", data['to'], "0"]

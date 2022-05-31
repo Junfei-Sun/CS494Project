@@ -1,8 +1,8 @@
-from collections import UserList
 import socket
 import threading
 import json
 import time
+import os
 
 
 
@@ -25,12 +25,15 @@ class HandleRequest():
     """
     usernames = {}    #key is User object, value is username
     userFile = open("AllUsernames.txt", "r")
-    userList = userFile.read()
+    userList = userFile.read().split("\n")
     userFile.close
 
     def __init__(self, user):
         self.user = user
         self.reciverList = []
+        self.singleChat = False
+        self.groupChat = False
+        self.roomName = ""
 
     def getUser(self, nameList):
         return [k for k, u in HandleRequest.usernames.items() if u in nameList]
@@ -101,6 +104,12 @@ class HandleRequest():
         return True
 
     def chatWith(self, data):
+        if data['to'] not in HandleRequest.userList:
+            data['status'] = False
+            data['info'] = "The target user does not exist. List of registered users: "+repr(HandleRequest.userList)
+            self.send2Me(data)
+            return True
+
         if HandleRequest.usernames[self.user] > data['to']:
             fileName = HandleRequest.usernames[self.user] + "_" + data['to'] + ".txt"
         else:
@@ -111,59 +120,229 @@ class HandleRequest():
         msg = userFile.read()
         userFile.close()
         msg = msg.split('\n')
-        unreadMsg = []
+        unreadMsg = ""
         unread = False
+        recv = self.getUser(data['to'])
+        fromUser = ""
         for line in msg:
             if "unread" in line:
                 unread = True
                 newMsg = line.split("$#@")
-                newMsg = newMsg[0]+"  From: "+newMsg[1]+"    "+newMsg[2]
-                unreadMsg.append(newMsg)
-        if unread == True:
+                fromUser = newMsg[1]
+                newMsg = newMsg[0]+"  From: "+newMsg[1]+"    "+newMsg[2] + "\n"
+                unreadMsg = unreadMsg + newMsg
+        if unread == True and HandleRequest.usernames[self.user] != fromUser:
             self.reciverList = []
             self.reciverList.append(data['to'])
+            self.groupChat = False
+            self.singleChat = True
             data['status'] = True
             data['info'] = "Start to chat with "+data['to']
             data['msg'] = unreadMsg
+            data['type'] = "recieve"
+            data['from'] = fromUser
+            if not recv:
+                data['info'] = "The target user is not online. You can still send messages, which will appear when the other person starts a chat with you."
             self.send2Me(data)
-            if "notChatWith" not in data.keys():
+
+            #remove unread flag
+            fileData = ""
+            for line in msg:
+                newMsg = line.split("$#@")
+                line += "\n"
+                if len(newMsg) == 4:
+                    newData = newMsg[0] +"$#@"+ newMsg[1] +"$#@"+ newMsg[2] +"\n"
+                    line = newData
+                fileData += line
+            userFile = open(fileName, "w")
+            userFile.write(fileData)
+            userFile.close()
+
+            if "notChatWith" not in data.keys() and recv:
                 rdata = {'type': "enterChat", 'to': HandleRequest.usernames[self.user]}
                 jData = json.dumps(rdata)
-                recv = self.getUser(self.reciverList)
                 recv[0].csocket.send(jData.encode())
-
         else:
             self.reciverList = []
             self.reciverList.append(data['to'])
+            self.groupChat = False
+            self.singleChat = True
             data['status'] = True
             data['info'] = "Start to chat with "+data['to']
+            if not recv:
+                data['info'] = "The target user is not online. You can still send messages, which will appear when the other person starts a chat with you."
             self.send2Me(data)
-            if "notChatWith" not in data.keys():
+            if "notChatWith" not in data.keys() and recv:
                 rdata = {'type': "enterChat", 'to': HandleRequest.usernames[self.user]}
                 jData = json.dumps(rdata)
-                recv = self.getUser(self.reciverList)
                 recv[0].csocket.send(jData.encode())
         return True
 
     def sendMsg(self, data):
-        if len(self.reciverList) == 1:
+        if self.singleChat:
             if HandleRequest.usernames[self.user] > self.reciverList[0]:
                 fileName = HandleRequest.usernames[self.user] + "_" + self.reciverList[0] + ".txt"
             else:
                 fileName = self.reciverList[0] + "_" + HandleRequest.usernames[self.user] + ".txt"
             userFile = open(fileName, "a")
             t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            # time $#@ from $#@ msg $#@ unread. But unread need ping().
-            formatMsg = t +"$#@"+ HandleRequest.usernames[self.user] +"$#@"+ data['msg'] +"\n"
+            msg = ""
+            for m in data['msg']:
+                msg = msg + m + " "
+            recv = self.getUser(self.reciverList)
+            # time $#@ from $#@ msg $#@ unread.
+            if not recv:
+                formatMsg = t +"$#@"+ HandleRequest.usernames[self.user] +"$#@"+ msg +"$#@"+ "unread\n"
+            else:
+                formatMsg = t +"$#@"+ HandleRequest.usernames[self.user] +"$#@"+ msg +"\n"
             userFile.write(formatMsg)
             userFile.close()
 
+            if not recv:
+                data['status'] = True
+                data['info'] = "The target user is not online. Message has been saved."
+                self.send2Me(data)
+            else:
+                data['status'] = True
+                data['type'] = "recieve"
+                data['from'] = HandleRequest.usernames[self.user]
+                data['msg'] = msg
+                self.send2User(data, recv)
+
+        elif self.groupChat:
+            userFile = open("%s.txt" % self.roomName, "a")
+            t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            msg = ""
+            for m in data['msg']:
+                msg = msg + m + " "
             recv = self.getUser(self.reciverList)
+            formatMsg = t +"$#@"+ HandleRequest.usernames[self.user] +"$#@"+ msg +"\n"
+            userFile.write(formatMsg)
+            userFile.close()
             data['status'] = True
             data['type'] = "recieve"
             data['from'] = HandleRequest.usernames[self.user]
+            data['msg'] = msg
             self.send2User(data, recv)
+
+        else:
+            data['status'] = False
+            data['info'] = "Please enter chatWith or enterRoom to choose a reciever. Current recever list: " + repr(self.reciverList)
+            data.pop('msg')
+            self.send2Me(data)
         return True
+
+    def createRoom(self, data):
+        path = os.getcwd()
+        files = os.listdir(path)
+        rooms = []
+        for f in files:
+            if "room" in f:
+                rooms.append(f)
+        roomName = ""
+        if "room_1.txt" not in rooms:
+            roomFile = open("room_1.txt", "w")
+            roomFile.write("NameList:\n")
+            roomFile.write(HandleRequest.usernames[self.user]+"\n")
+            roomFile.write("Messages:\n")
+            roomFile.close()
+            roomName = "room_1"
+        else:
+            for r in rooms:
+                if r > roomName:
+                    roomName = r
+            rn = roomName.split("_")
+            rNum = int(rn[1]) +1
+            roomName = "room_"+str(rNum)
+            roomFile = open("%s.txt" % roomName, "w")
+            roomFile.write("NameList:\n")
+            roomFile.write(HandleRequest.usernames[self.user]+"\n")
+            roomFile.write("Messages:\n")
+            roomFile.close()
+
+        data['status'] = True
+        data['info'] = "Room created successfully. The room name is "+roomName
+        self.send2Me(data)
+        return True
+
+    def enterRoom(self, data):
+        #msg format: time + From name + msg
+        roomName = data['roomName']
+        path = os.getcwd()
+        files = os.listdir(path)
+        rooms = []
+        for f in files:
+            if "room" in f:
+                rooms.append(f)
+        if roomName+".txt" not in rooms:
+            data['status'] = False
+            data['info'] = "Room name is wrong. Here are all the room names: "+repr(rooms)
+            self.send2Me(data)
+        else:
+            roomFile = open("%s.txt" % roomName, "r")
+            fileContent = roomFile.read()
+            roomFile.close()
+            pos = fileContent.find("Messages:")
+            newFile = fileContent
+            fileLines = fileContent.split("\n")
+            msgPos = 0
+            for i in range(len(fileLines)):
+                if fileLines[i] == "Messages:":
+                    msgPos = i
+            users = fileLines[1:msgPos]
+            if HandleRequest.usernames[self.user] not in users:
+                newFile = newFile[:pos] + HandleRequest.usernames[self.user] + '\n' + newFile[pos:]
+                roomFile = open("%s.txt" % roomName, "w")
+                roomFile.writelines(newFile)
+                roomFile.close()
+                users.append(HandleRequest.usernames[self.user])
+            self.reciverList = users
+            self.groupChat = True
+            self.singleChat = False
+            self.roomName = roomName
+            msgLen = len(fileLines[msgPos+1:])
+            msg = ""
+            if msgLen == 1 and fileLines[msgPos+1] == "":
+                data['status'] = True
+                data['msg'] = msg
+                data['from'] = roomName
+                data['type'] = "recieve"
+                self.send2Me(data)
+            else:
+                for m in range(msgLen-1):
+                    if msgLen - m <= 10:
+                        msgctnt = fileLines[m+msgPos+1].split("$#@")
+                        msg += msgctnt[0] + "  From: " + msgctnt[1] + "    " + msgctnt[2] + "\n"
+                data['status'] = True
+                data['msg'] = msg
+                data['from'] = roomName
+                data['type'] = "recieve"
+                self.send2Me(data)
+        return True
+
+    def listRooms(self, data):
+        path = os.getcwd()
+        files = os.listdir(path)
+        rooms = []
+        for f in files:
+            if "room" in f:
+                rooms.append(f)
+        data['status'] = True
+        data['info'] = "Room: "+repr(rooms)
+        self.send2Me(data)
+        return True
+
+    def listRoomUsers(self, data):
+        if not self.groupChat:
+            data['status'] = False
+            data['info'] = "listRoomUsers command can only be used after you have entered a room."
+            self.send2Me(data)
+        else:
+            data['status'] = True
+            data['info'] = self.reciverList
+            self.send2Me(data)
+        return True
+            
 
 
     def __main__(self, data):
@@ -175,6 +354,10 @@ class HandleRequest():
             "listUsers": self.listUsers,
             "chatWith": self.chatWith,
             ">>": self.sendMsg,
+            "createRoom": self.createRoom,
+            "enterRoom": self.enterRoom,
+            "listRooms": self.listRooms,
+            "listRoomUsers": self.listRoomUsers,
         }
         try:
             return switch[type](data)
