@@ -370,6 +370,46 @@ class HandleRequest():
             self.send2Me(data)
         return True
             
+    def leaveRoom(self, data):
+        roomName = data['roomName']+".txt"
+        path = os.getcwd()
+        files = os.listdir(path)
+        rooms = []
+        for f in files:
+            if "room" in f:
+                rooms.append(f)
+        if roomName not in rooms:
+            data['status'] = False
+            data['info'] = "Please enter the correct room name. Here is the room list: "+repr(rooms)
+            self.send2Me(data)
+            return True
+
+        roomFile = open(roomName, "r")
+        fileContent = roomFile.read()
+        roomFile.close()
+        newFile = fileContent
+        pos = fileContent.find(HandleRequest.usernames[self.user])
+        if pos == -1:
+            data['status'] = False
+            data['info'] = "You have not joined this room."
+            self.send2Me(data)
+            return True
+
+        newFile = newFile[:pos] + newFile[pos+len(HandleRequest.usernames[self.user]+"\n"):]
+        roomFile = open(roomName, "w")
+        roomFile.writelines(newFile)
+        roomFile.close()
+        data['status'] = True
+        data['info'] = "You have left the room."
+        self.send2Me(data)
+        return True
+
+    def towho(self, data):
+        data['status'] = True
+        data['info'] = self.reciverList
+        self.send2Me(data)
+        return True
+
 
 
     def __main__(self, data):
@@ -385,6 +425,8 @@ class HandleRequest():
             "enterRoom": self.enterRoom,
             "listRooms": self.listRooms,
             "listRoomUsers": self.listRoomUsers,
+            "leaveRoom": self.leaveRoom,
+            "towho": self.towho,
         }
         try:
             return switch[type](data)
@@ -404,7 +446,12 @@ class ClientThread(threading.Thread):
         try:
             handle = HandleRequest(self.user)
             while True:
-                request_data = self.user.csocket.recv(2048)
+                try:
+                    request_data = self.user.csocket.recv(2048)
+                except ConnectionResetError:
+                    print("The client has been disconnected for an unknown reason.")
+                    self.user.csocket.close()
+                    break
                 data = json.loads(request_data.decode())
                 print("Receive "+request_data.decode())
                 keepRun = handle.__main__(data)

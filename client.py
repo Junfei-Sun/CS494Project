@@ -9,6 +9,7 @@ port = 8080
 class Handle():
     def __init__(self, socket):
         self.socket = socket
+        self.login = False
 
     def help(self):
         print("****************************")
@@ -22,6 +23,8 @@ class Handle():
         print("listRooms")
         print("createRoom")
         print("enterRoom ROOMNAME")
+        print("leaveRoom ROOMNAME")
+        print("towho")
         print("****************************")  
         print("Room Command")
         print("****************************")  
@@ -77,12 +80,17 @@ class Handle():
         >>  noreply
         已经无所谓有没有返回信息了，现在的给监听函数分配了一个线程
         """
+        if not self.login and type not in ['register', 'login']:
+            print("please log in first.")
+            return True
+
         try:
             if type == "help":
                 return self.help()
             elif type == "register":
                 return self.sendName(data)
             elif type == "login":
+                self.login = True
                 return self.sendName(data)
             elif type == "logout":
                 self.sendType(data)
@@ -100,6 +108,10 @@ class Handle():
             elif type == "listRooms":
                 return self.sendType(data)
             elif type == "listRoomUsers":
+                return self.sendType(data)
+            elif type == "leaveRoom":
+                return self.sendRoom(data)
+            elif type == "towho":
                 return self.sendType(data)
             else:
                 print("Incorrect command. If need help, enter help as Command.")
@@ -121,31 +133,32 @@ class listenThread(threading.Thread):
     def run(self):
         while True:
             try:
-                recvData = self.sock.recv(1024)
-                data = json.loads(recvData.decode())
-                #接收消息
-                if data['type'] == "recieve":
-                    if "info" in data.keys():
-                        print(data['info'])
-                    print("From: "+ data['from'])
-                    print(data['msg'])
-                #被拉入房间
-                elif data['type'] == "enterChat":
-                    rdata = ["chatWith", data['to'], "0"]
-                    self.handle.sendTo(rdata)
-                else:
-                    if data['status'] == True:
-                        print("Execution succeed. From server: "+repr(data['info']))
-                    elif data['status']  == False:
-                        print("Execution failed. From server: "+repr(data['info']))
-                    else:
-                        print("Holyshit..."+repr(data))
-                    if data['type'] == "logout":
-                        break
-
-            except Exception as e:
-                print("Disconnect...")
+                recvData = self.sock.recv(2048)
+            except ConnectionResetError:
+                print("The server has been disconnected for an unknown reason.")
                 break
+                
+            data = json.loads(recvData.decode())
+            #接收消息
+            if data['type'] == "recieve":
+                if "info" in data.keys():
+                    print(data['info'])
+                print("From: "+ data['from'])
+                print(data['msg'])
+            #被拉入房间
+            elif data['type'] == "enterChat":
+                rdata = ["chatWith", data['to'], "0"]
+                self.handle.sendTo(rdata)
+            else:
+                if data['status'] == True:
+                    print("Execution succeed. From server: "+repr(data['info']))
+                elif data['status']  == False:
+                    print("Execution failed. From server: "+repr(data['info']))
+                else:
+                    print("Holyshit..."+repr(data))
+                if data['type'] == "logout":
+                    break
+
 
 class Client():
     def __main__(self):
