@@ -69,6 +69,12 @@ class Handle():
         self.socket.send(jData.encode())
         return True
 
+    def sendFile(self, data, content):
+        sData = {"type": data[0], "fileName": data[1], "fileContent": content}
+        jData = json.dumps(sData)
+        self.socket.send(jData.encode())
+        return True
+
     def __main__(self, data):
         type = data[0]
         """
@@ -113,6 +119,16 @@ class Handle():
                 return self.sendRoom(data)
             elif type == "towho":
                 return self.sendType(data)
+            elif type == "file>>":
+                filename = data[1]
+                try:
+                    userFile = open(filename, "r")
+                except IOError:
+                    print("Filename is wrong.")
+                    return True
+                fileContent = userFile.read()
+                userFile.close()
+                return self.sendFile(data, fileContent)
             else:
                 print("Incorrect command. If need help, enter help as Command.")
                 return True
@@ -136,6 +152,7 @@ class listenThread(threading.Thread):
                 recvData = self.sock.recv(2048)
             except ConnectionResetError:
                 print("The server has been disconnected for an unknown reason.")
+                self.sock.close()
                 break
                 
             data = json.loads(recvData.decode())
@@ -149,6 +166,13 @@ class listenThread(threading.Thread):
             elif data['type'] == "enterChat":
                 rdata = ["chatWith", data['to'], "0"]
                 self.handle.sendTo(rdata)
+            elif data['type'] == "file>>":
+                fileName = "recv_"+data['fileName']
+                fileContent = data['fileContent']
+                userFile = open(fileName, "w")
+                userFile.write(fileContent)
+                userFile.close()
+                print("Received file: "+fileName)
             else:
                 if data['status'] == True:
                     print("Execution succeed. From server: "+repr(data['info']))

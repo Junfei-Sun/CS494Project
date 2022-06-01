@@ -410,6 +410,22 @@ class HandleRequest():
         self.send2Me(data)
         return True
 
+    def sendFile(self, data):
+        recv = self.getUser(self.reciverList)
+        print(recv)
+        if not recv:
+            data['type'] = "notFileTrans"
+            data['status'] = False
+            data['info'] = "The target user is not online. Please transfer files while the other party is online."
+            self.send2Me(data)
+            return True
+        self.send2User(data, recv)
+        data['status'] = True
+        data['info'] = "File transfer was successful."
+        data['type'] = "notFileTrans"
+        self.send2Me(data)
+        return True
+
 
 
     def __main__(self, data):
@@ -427,6 +443,7 @@ class HandleRequest():
             "listRoomUsers": self.listRoomUsers,
             "leaveRoom": self.leaveRoom,
             "towho": self.towho,
+            "file>>": self.sendFile,
         }
         try:
             return switch[type](data)
