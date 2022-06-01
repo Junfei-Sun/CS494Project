@@ -21,6 +21,7 @@ class HandleRequest():
         type:
         status:
         info:
+        msg:
     }
     """
     usernames = {}    #key is User object, value is username
@@ -57,6 +58,7 @@ class HandleRequest():
 
     def register(self, data):
         userTxt=open("AllUsernames.txt", "a")
+        #用户是否已注册
         if data['username'] in HandleRequest.userList:
             userTxt.close()
             userFile = open("AllUsernames.txt", "r")
@@ -104,12 +106,19 @@ class HandleRequest():
         return True
 
     def chatWith(self, data):
+        """
+        data = {
+            "type" = chatWith,
+            "to" = toName
+        }
+        """
         if data['to'] not in HandleRequest.userList:
             data['status'] = False
             data['info'] = "The target user does not exist. List of registered users: "+repr(HandleRequest.userList)
             self.send2Me(data)
             return True
 
+        #读取unread消息
         if HandleRequest.usernames[self.user] > data['to']:
             fileName = HandleRequest.usernames[self.user] + "_" + data['to'] + ".txt"
         else:
@@ -124,6 +133,7 @@ class HandleRequest():
         unread = False
         recv = self.getUser(data['to'])
         fromUser = ""
+        #msg format: time + FromUser + msg + unread
         for line in msg:
             if "unread" in line:
                 unread = True
@@ -131,6 +141,8 @@ class HandleRequest():
                 fromUser = newMsg[1]
                 newMsg = newMsg[0]+"  From: "+newMsg[1]+"    "+newMsg[2] + "\n"
                 unreadMsg = unreadMsg + newMsg
+
+        #如果存在未读消息，冰鞋现用户不是发送消息的用户，发送未读消息
         if unread == True and HandleRequest.usernames[self.user] != fromUser:
             self.reciverList = []
             self.reciverList.append(data['to'])
@@ -158,6 +170,7 @@ class HandleRequest():
             userFile.write(fileData)
             userFile.close()
 
+            #拉目标用户开始聊天
             if "notChatWith" not in data.keys() and recv:
                 rdata = {'type': "enterChat", 'to': HandleRequest.usernames[self.user]}
                 jData = json.dumps(rdata)
@@ -179,7 +192,10 @@ class HandleRequest():
         return True
 
     def sendMsg(self, data):
+        #data['type'] = ">>"
+        #data['msg'] = msg
         if self.singleChat:
+            #保存消息
             if HandleRequest.usernames[self.user] > self.reciverList[0]:
                 fileName = HandleRequest.usernames[self.user] + "_" + self.reciverList[0] + ".txt"
             else:
@@ -198,6 +214,7 @@ class HandleRequest():
             userFile.write(formatMsg)
             userFile.close()
 
+            #将消息发给用户
             if not recv:
                 data['status'] = True
                 data['info'] = "The target user is not online. Message has been saved."
@@ -210,6 +227,7 @@ class HandleRequest():
                 self.send2User(data, recv)
 
         elif self.groupChat:
+            #保存消息
             userFile = open("%s.txt" % self.roomName, "a")
             t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             msg = ""
@@ -219,6 +237,8 @@ class HandleRequest():
             formatMsg = t +"$#@"+ HandleRequest.usernames[self.user] +"$#@"+ msg +"\n"
             userFile.write(formatMsg)
             userFile.close()
+
+            #将消息发给用户
             data['status'] = True
             data['type'] = "recieve"
             data['from'] = HandleRequest.usernames[self.user]
@@ -240,6 +260,7 @@ class HandleRequest():
             if "room" in f:
                 rooms.append(f)
         roomName = ""
+        #如果还没有房间文件
         if "room_1.txt" not in rooms:
             roomFile = open("room_1.txt", "w")
             roomFile.write("NameList:\n")
@@ -248,6 +269,7 @@ class HandleRequest():
             roomFile.close()
             roomName = "room_1"
         else:
+            #如果有房间文件，获取现在最大的房间编号，新房间的编号就是原先最大房间号加一
             for r in rooms:
                 if r > roomName:
                     roomName = r
@@ -267,6 +289,7 @@ class HandleRequest():
 
     def enterRoom(self, data):
         #msg format: time + From name + msg
+        #读取最新的十条消息
         roomName = data['roomName']
         path = os.getcwd()
         files = os.listdir(path)
@@ -282,6 +305,7 @@ class HandleRequest():
             roomFile = open("%s.txt" % roomName, "r")
             fileContent = roomFile.read()
             roomFile.close()
+            #获得消息在文件的位置
             pos = fileContent.find("Messages:")
             newFile = fileContent
             fileLines = fileContent.split("\n")
@@ -290,18 +314,21 @@ class HandleRequest():
                 if fileLines[i] == "Messages:":
                     msgPos = i
             users = fileLines[1:msgPos]
+            #将新进入房间的用户，加入房间的userList
             if HandleRequest.usernames[self.user] not in users:
                 newFile = newFile[:pos] + HandleRequest.usernames[self.user] + '\n' + newFile[pos:]
                 roomFile = open("%s.txt" % roomName, "w")
                 roomFile.writelines(newFile)
                 roomFile.close()
                 users.append(HandleRequest.usernames[self.user])
+            #读取十条消息和发送消息
             self.reciverList = users
             self.groupChat = True
             self.singleChat = False
             self.roomName = roomName
             msgLen = len(fileLines[msgPos+1:])
             msg = ""
+            #这是还没有任何消息的情况，不加这个判断下面的循环中会报错
             if msgLen == 1 and fileLines[msgPos+1] == "":
                 data['status'] = True
                 data['msg'] = msg
@@ -394,11 +421,13 @@ class ClientThread(threading.Thread):
 
 class Server():
     def __main__(self):
+        #创建服务器socket
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.bind((host,port))
         server_socket.listen(5)
 
         threads = []
+        #监听连接
         while True:
             try:
                 client_socket, client_address = server_socket.accept()

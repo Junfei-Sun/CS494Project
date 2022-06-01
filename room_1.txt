@@ -2,6 +2,7 @@ NameList:
 xingjian
 lingge
 junfei
+xiaoming
 Messages:
 2022-05-30 21:09:47$#@xingjian$#@room test 1 
 2022-05-30 21:09:53$#@xingjian$#@room test 2 
@@ -15,3 +16,12 @@ Messages:
 2022-05-30 21:16:16$#@lingge$#@10 
 2022-05-30 21:16:28$#@xingjian$#@room test 11 
 2022-05-30 21:16:31$#@xingjian$#@12 
+2022-05-31 21:23:06$#@xingjian$#@room test 13 
+2022-05-31 21:23:24$#@xingjian$#@room test 14 
+2022-05-31 21:26:26$#@xiaoming$#@room test 15 
+2022-05-31 21:26:41$#@xingjian$#@test 16 
+2022-05-31 21:40:19$#@xingjian$#@offline room test 17 
+2022-05-31 21:40:40$#@xiaoming$#@test 18 
+2022-05-31 21:41:02$#@xingjian$#@xingjian test 19 
+2022-05-31 21:41:49$#@lingge$#@test 20 
+2022-05-31 21:43:47$#@xiaoming$#@test 21 

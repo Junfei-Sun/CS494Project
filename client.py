@@ -42,6 +42,7 @@ class Handle():
         return True
 
     def sendTo(self, data):
+        #对被拉入聊天的情况做限制，不限制会无限循环聊天的双方互相chatWith拉人
         if len(data) == 3 and data[2] == "0":
             sData = {"type": data[0], "to": data[1], "notChatWith": False}
             jData = json.dumps(sData)
@@ -74,6 +75,7 @@ class Handle():
         listUsers   reply
         chatWith    reply
         >>  noreply
+        已经无所谓有没有返回信息了，现在的给监听函数分配了一个线程
         """
         try:
             if type == "help":
@@ -110,6 +112,7 @@ class Handle():
             return True
 
 class listenThread(threading.Thread):
+    #客户端的监听线程
     def __init__(self, csocket, handle):
         threading.Thread.__init__(self)
         self.sock = csocket
@@ -120,11 +123,13 @@ class listenThread(threading.Thread):
             try:
                 recvData = self.sock.recv(1024)
                 data = json.loads(recvData.decode())
+                #接收消息
                 if data['type'] == "recieve":
                     if "info" in data.keys():
                         print(data['info'])
                     print("From: "+ data['from'])
                     print(data['msg'])
+                #被拉入房间
                 elif data['type'] == "enterChat":
                     rdata = ["chatWith", data['to'], "0"]
                     self.handle.sendTo(rdata)
@@ -153,6 +158,7 @@ class Client():
         handle = Handle(client_socket)
         t = listenThread(client_socket, handle)
         t.start()
+        #读取输入
         while True:
             rawData = input()
             data = rawData.split()
@@ -167,12 +173,3 @@ class Client():
 if __name__ == "__main__":
     client=Client()
     client.__main__()
-
-
-"""
-data = input("Input massage: ")
-client_socket.sendto(data.encode(),(host,port))
-data = client_socket.recv(1024)
-client_socket.close()
-print(data.decode())
-"""
