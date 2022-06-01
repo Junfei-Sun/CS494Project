@@ -45,7 +45,7 @@ class Handle():
         return True
 
     def sendTo(self, data):
-        #对被拉入聊天的情况做限制，不限制会无限循环聊天的双方互相chatWith拉人
+        #Restrict the situation of being pulled into the chat, and do not limit the two parties who will chat in an infinite loop chatWith each other to pull people
         if len(data) == 3 and data[2] == "0":
             sData = {"type": data[0], "to": data[1], "notChatWith": False}
             jData = json.dumps(sData)
@@ -78,7 +78,7 @@ class Handle():
         listUsers   reply
         chatWith    reply
         >>  noreply
-        已经无所谓有没有返回信息了，现在的给监听函数分配了一个线程
+        It doesn't matter whether there is any return information, now assign a thread to the listener function
         """
         if not self.login and type not in ['register', 'login']:
             print("please log in first.")
@@ -124,7 +124,7 @@ class Handle():
             return True
 
 class listenThread(threading.Thread):
-    #客户端的监听线程
+    #Client's listener thread
     def __init__(self, csocket, handle):
         threading.Thread.__init__(self)
         self.sock = csocket
@@ -139,13 +139,13 @@ class listenThread(threading.Thread):
                 break
                 
             data = json.loads(recvData.decode())
-            #接收消息
+            #receive message
             if data['type'] == "recieve":
                 if "info" in data.keys():
                     print(data['info'])
                 print("From: "+ data['from'])
                 print(data['msg'])
-            #被拉入房间
+            #pulled into the room
             elif data['type'] == "enterChat":
                 rdata = ["chatWith", data['to'], "0"]
                 self.handle.sendTo(rdata)
@@ -171,7 +171,7 @@ class Client():
         handle = Handle(client_socket)
         t = listenThread(client_socket, handle)
         t.start()
-        #读取输入
+        #read input
         while True:
             rawData = input()
             data = rawData.split()
