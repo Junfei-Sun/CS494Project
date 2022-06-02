@@ -464,7 +464,7 @@ class ClientThread(threading.Thread):
             handle = HandleRequest(self.user)
             while True:
                 try:
-                    request_data = self.user.csocket.recv(2048)
+                    request_data = self.user.csocket.recv(2048) #keep data receiving if no error
                 except ConnectionResetError:
                     print("The client has been disconnected for an unknown reason.")
                     self.user.csocket.close()
@@ -502,7 +502,7 @@ class Server():
             except KeyboardInterrupt:
                 print('KeyboardInterrupt:')
                 for th in threads:
-                    th.stop()
+                    th.stop() #stop all thread and close the server socket
                 break
         server_socket.close()
 
