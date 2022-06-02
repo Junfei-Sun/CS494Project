@@ -471,8 +471,8 @@ class ClientThread(threading.Thread):
                     break
                 data = json.loads(request_data.decode())
                 print("Receive "+request_data.decode())
-                keepRun = handle.__main__(data)
-                if not keepRun:
+                keepRun = handle.__main__(data) 
+                if not keepRun:#if logout
                     break
         except Exception as e:
             print("Disconnect with error...")
