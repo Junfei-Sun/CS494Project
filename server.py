@@ -497,8 +497,8 @@ class Server():
                 client_socket, client_address = server_socket.accept()
                 user = User(client_address, client_socket)
                 t = ClientThread(user)
-                threads+=[t]
-                t.start()
+                threads+=[t] #a list of threads
+                t.start()#begin a new thread
             except KeyboardInterrupt:
                 print('KeyboardInterrupt:')
                 for th in threads:
