@@ -206,7 +206,9 @@ class Client():
                 keepRun = handle.__main__(data)
             if not keepRun:
                 return
-
+#          print("The server has been disconnected for an unknown reason.")
+#          self.sock.close()
+ 
 
 if __name__ == "__main__":
     client=Client()
