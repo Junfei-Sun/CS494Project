@@ -25,6 +25,7 @@ class Handle():
         print("enterRoom ROOMNAME")
         print("leaveRoom ROOMNAME")
         print("towho")
+        print("file>> FILENAME")
         print("****************************")  
         print("Room Command")
         print("****************************")  
@@ -205,6 +206,7 @@ class Client():
                 keepRun = handle.__main__(data)
             if not keepRun:
                 return
+        client_socket.close()
 
 
 if __name__ == "__main__":

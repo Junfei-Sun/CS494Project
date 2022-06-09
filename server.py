@@ -467,6 +467,7 @@ class ClientThread(threading.Thread):
                     request_data = self.user.csocket.recv(2048)
                 except ConnectionResetError:
                     print("The client has been disconnected for an unknown reason.")
+                    handle.deluser(self.user)
                     self.user.csocket.close()
                     break
                 data = json.loads(request_data.decode())
