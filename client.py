@@ -31,6 +31,7 @@ class Handle():
         print("****************************")  
         print(">> MSG")
         print("listRoomUsers")
+        print(">> Filename")
         return True
 
     def sendType(self, data):
@@ -205,6 +206,8 @@ class Client():
             else:
                 keepRun = handle.__main__(data)
             if not keepRun:
+#                print("The server has been disconnected")
+#                self.sock.close()
                 return
         client_socket.close()
 
